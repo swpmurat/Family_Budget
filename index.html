@@ -941,162 +941,104 @@ const a=document.createElement('a');a.href=url;a.download='aile-butce-yedek.json
 };
 window.downloadPDF=async()=>{
   try{
-    if(!window.jspdf||!window.jspdf.jsPDF){alert('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.');return;}
+    if(!window.jspdf||!window.jspdf.jsPDF){alert('PDF kutuphanesi yuklenemedi.');return;}
     if(typeof window.showToast==='function')window.showToast('PDF hazırlanıyor...','warn');
 
     const jsPDF=window.jspdf.jsPDF;
     const doc=new jsPDF({orientation:'p',unit:'mm',format:'a4'});
 
-    async function loadFont() {
-      const res = await fetch('https://cdn.jsdelivr.net/npm/@pdfme/common/dist/assets/fonts/Roboto-Regular.ttf');
-      const buf = await res.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
-      return btoa(binary);
+    function trClean(s){
+      if(!s)return '';
+      return String(s).replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ü/g,'u').replace(/Ü/g,'U').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ç/g,'c').replace(/Ç/g,'C').replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/₺/g,'TL').replace(/[\u{1F000}-\u{1FFFF}]/gu,'').replace(/[\u{2600}-\u{27BF}]/gu,'');
     }
+    const c=trClean;
 
     const year=A.year||new Date().getFullYear();
     const pad=n=>String(n).padStart(2,'0');
     const now=new Date();
     const today=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
-    const monthsShort=['OCA','ŞUB','MAR','NİS','MAY','HAZ','TEM','AĞU','EYL','EKİ','KAS','ARA'];
+    const monthsShort=['OCA','SUB','MAR','NIS','MAY','HAZ','TEM','AGU','EYL','EKI','KAS','ARA'];
     const money=v=>(Math.round(v||0)).toLocaleString('tr-TR')+' TL';
     const members=allM();
-    const memName=id=>{const m=members.find(x=>x.id===id);return m?m.name:'—';};
+    const memName=id=>{const m=members.find(x=>x.id===id);return m?c(m.name):'—';};
 
-    let useFallback=false;
-    let tableFont='Roboto';
-    try{
-      const fontBase64 = await loadFont();
-      doc.addFileToVFS('Roboto-Regular.ttf', fontBase64);
-      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-      doc.setFont('Roboto');
-    }catch(fontErr){
-      console.error('PDF font yuklenemedi:', fontErr);
-      useFallback=true;
-      tableFont='helvetica';
-      try{doc.setFont('helvetica','normal');}catch(_){}
-    }
-
-    function stripEmoji(s){
-      if(!s) return '';
-      return String(s).replace(/[\u{1F000}-\u{1FFFF}]/gu,'');
-    }
-    function trClean(s) {
-      if(!s) return '';
-      return String(s).replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ü/g,'u').replace(/Ü/g,'U').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ç/g,'c').replace(/Ç/g,'C').replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/₺/g,'TL');
-    }
-    const clean=v=>{
-      const raw=stripEmoji(String(v==null?'':v));
-      return useFallback?trClean(raw):raw;
-    };
-
-    // Ensure Roboto is selected before any text drawing.
-    try{doc.setFont(tableFont);}catch(e){}
-
-    let y=18;
+    doc.setFont('helvetica','bold');
     doc.setFontSize(18);
-    try{doc.setFont(undefined,'bold');}catch(e){}
-    doc.text(clean('Aile Bütçe Raporu - '+year),14,y);
-    y+=8;
+    doc.text(c('Aile Butce Raporu - '+year),14,18);
+    doc.setFont('helvetica','normal');
     doc.setFontSize(10);
-    try{doc.setFont(undefined,'normal');}catch(e){}
-    doc.text(clean('Oluşturulma tarihi: '+today),14,y);
-    y+=6;
+    doc.text(c('Olusturulma tarihi: '+today),14,26);
 
-    // Table 1: Monthly summary
+    doc.setFont('helvetica','bold');
     doc.setFontSize(12);
-    try{doc.setFont(undefined,'bold');}catch(e){}
-    doc.text(clean('Aylık Özet'),14,y);
-    y+=3;
-    try{doc.setFont(undefined,'normal');}catch(e){}
+    doc.text(c('Aylik Ozet'),14,34);
 
     const monthlyRows=[];
     let sumG=0,sumE=0,sumK=0;
     for(let mi=0;mi<12;mi++){
       const g=A.income.filter(x=>x.month===mi).reduce((a,x)=>a+(x.amount||0),0);
       const e=A.expenses.filter(x=>x.month===mi).reduce((a,x)=>a+(x.amount||0),0);
-      const k=g-e;
-      sumG+=g;sumE+=e;sumK+=k;
-      monthlyRows.push([clean(monthsShort[mi]),clean(money(g)),clean(money(e)),clean(money(k))]);
+      const k=g-e;sumG+=g;sumE+=e;sumK+=k;
+      monthlyRows.push([monthsShort[mi],money(g),money(e),money(k)]);
     }
-    monthlyRows.push([clean('TOPLAM'),clean(money(sumG)),clean(money(sumE)),clean(money(sumK))]);
+    monthlyRows.push(['TOPLAM',money(sumG),money(sumE),money(sumK)]);
     doc.autoTable({
-      startY:y+2,
-      head:[[clean('Ay'),clean('Gelir'),clean('Gider'),clean('Kalan')]],
+      startY:37,
+      head:[['Ay','Gelir','Gider','Kalan']],
       body:monthlyRows,
       theme:'grid',
-      styles:{fontSize:9,cellPadding:2,font:tableFont},
-      headStyles:{fillColor:[29,158,117],textColor:255,fontStyle:'bold',font:tableFont},
-      didParseCell:(data)=>{
-        if(data.row.index===monthlyRows.length-1){data.cell.styles.fontStyle='bold';}
-      }
+      styles:{fontSize:9,cellPadding:2,font:'helvetica'},
+      headStyles:{fillColor:[29,158,117],textColor:255,fontStyle:'bold'},
+      didParseCell:function(data){if(data.row.index===monthlyRows.length-1)data.cell.styles.fontStyle='bold';}
     });
-    y=doc.lastAutoTable.finalY+8;
+    let y=doc.lastAutoTable.finalY+8;
 
-    // Table 2: Category expenses
+    doc.setFont('helvetica','bold');
     doc.setFontSize(12);
-    try{doc.setFont(undefined,'bold');}catch(e){}
-    doc.text(clean('Kategori Bazlı Harcamalar'),14,y);
-    try{doc.setFont(undefined,'normal');}catch(e){}
-    const catTotals=A.cats.map(c=>{
-      const total=A.expenses.filter(x=>x.cat===c.key).reduce((a,x)=>a+(x.amount||0),0);
-      return {c,total};
+    doc.text(c('Kategori Bazli Harcamalar'),14,y);
+    const catTotals=A.cats.map(ct=>{
+      const total=A.expenses.filter(x=>x.cat===ct.key).reduce((a,x)=>a+(x.amount||0),0);
+      return{ct,total};
     }).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
     const totalExp=catTotals.reduce((a,x)=>a+x.total,0)||1;
-    const catRows=catTotals.map(x=>{
-      const avg=x.total/12;
-      const pct=Math.round((x.total/totalExp)*1000)/10;
-      // Emoji icon removed; only category name
-      return [clean(x.c.name||''),clean(money(x.total)),clean(money(avg)),clean(String(pct))];
-    });
+    const catRows=catTotals.map(x=>[c(x.ct.name||''),money(x.total),money(x.total/12),String(Math.round(x.total/totalExp*1000)/10)]);
     doc.autoTable({
-      startY:y+2,
-      head:[[clean('Kategori'),clean('Toplam'),clean('Aylık Ort.'),clean('Pay(%)')]],
+      startY:y+3,
+      head:[[c('Kategori'),c('Toplam'),c('Aylik Ort.'),c('Pay(%)')]],
       body:catRows.length?catRows:[['-','-','-','-']],
       theme:'grid',
-      styles:{fontSize:9,cellPadding:2,font:tableFont},
-      headStyles:{fillColor:[55,138,221],textColor:255,fontStyle:'bold',font:tableFont}
+      styles:{fontSize:9,cellPadding:2,font:'helvetica'},
+      headStyles:{fillColor:[55,138,221],textColor:255,fontStyle:'bold'}
     });
     y=doc.lastAutoTable.finalY+8;
 
-    // Table 3: Income sources
+    if(y>240){doc.addPage();y=18;}
+    doc.setFont('helvetica','bold');
     doc.setFontSize(12);
-    try{doc.setFont(undefined,'bold');}catch(e){}
-    doc.text(clean('Gelir Kaynakları'),14,y);
-    try{doc.setFont(undefined,'normal');}catch(e){}
-    const incRows=A.income.map(t=>[
-      clean(t.desc||'Gelir'),
-      clean(memName(t.member)),
-      clean(monthsShort[t.month]||''),
-      clean(money(t.amount||0))
-    ]);
+    doc.text(c('Gelir Kaynaklari'),14,y);
+    const incRows=A.income.map(t=>[c(t.desc||'Gelir'),memName(t.member),monthsShort[t.month]||'',money(t.amount||0)]);
     doc.autoTable({
-      startY:y+2,
-      head:[[clean('Açıklama'),clean('Kişi'),clean('Ay'),clean('Tutar')]],
+      startY:y+3,
+      head:[[c('Aciklama'),c('Kisi'),'Ay','Tutar']],
       body:incRows.length?incRows:[['-','-','-','-']],
       theme:'grid',
-      styles:{fontSize:9,cellPadding:2,font:tableFont},
-      headStyles:{fillColor:[226,75,74],textColor:255,fontStyle:'bold',font:tableFont}
+      styles:{fontSize:9,cellPadding:2,font:'helvetica'},
+      headStyles:{fillColor:[226,75,74],textColor:255,fontStyle:'bold'}
     });
 
-    // Footer: page numbers
     const pageCount=doc.internal.getNumberOfPages();
     for(let p=1;p<=pageCount;p++){
-      doc.setPage(p);
-      doc.setFontSize(9);
+      doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(9);
       const w=doc.internal.pageSize.getWidth();
       const h=doc.internal.pageSize.getHeight();
-      doc.text(clean('Sayfa '+p+' / '+pageCount),w-14,h-8,{align:'right'});
+      doc.text('Sayfa '+p+' / '+pageCount,w-14,h-8,{align:'right'});
     }
 
-    doc.save(`aile-butce-rapor-${year}.pdf`);
-    if(typeof window.showToast==='function')window.showToast('PDF indirildi','warn');
+    doc.save('aile-butce-rapor-'+year+'.pdf');
+    if(typeof window.showToast==='function')window.showToast('PDF indirildi!','warn');
   }catch(e){
-    console.error('downloadPDF hata:', e);
+    console.error('PDF hata:',e);
     if(typeof window.showToast==='function')window.showToast('PDF olusturulamadi, tekrar deneyin','danger');
-    else alert('PDF olusturulamadi, tekrar deneyin.');
   }
 };
 window.importData=()=>{
