@@ -972,21 +972,25 @@ window.downloadPDF=async()=>{
       doc.addFileToVFS('Roboto-Regular.ttf', fontBase64);
       doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
       doc.setFont('Roboto');
-    }catch(e){
+    }catch(fontErr){
+      console.error('PDF font yuklenemedi:', fontErr);
       useFallback=true;
       tableFont='helvetica';
-      try{doc.setFont('helvetica','normal');}catch(_){} // fallback
+      try{doc.setFont('helvetica','normal');}catch(_){}
     }
 
-    function fallbackClean(s) {
+    function stripEmoji(s){
       if(!s) return '';
-      var map = {'ş':'s','Ş':'S','ı':'i','İ':'I','ü':'u','Ü':'U','ö':'o','Ö':'O','ç':'c','Ç':'C','ğ':'g','Ğ':'G'};
-      return String(s)
-        .replace(/[şŞıİüÜöÖçÇğĞ]/g, function(ch){ return map[ch] || ''; })
-        .replace(/—/g,'-')
-        .replace(/₺/g,'TL');
+      return String(s).replace(/[\u{1F000}-\u{1FFFF}]/gu,'');
     }
-    const clean=v=>useFallback?fallbackClean(v):String(v);
+    function trClean(s) {
+      if(!s) return '';
+      return String(s).replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ü/g,'u').replace(/Ü/g,'U').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ç/g,'c').replace(/Ç/g,'C').replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/₺/g,'TL');
+    }
+    const clean=v=>{
+      const raw=stripEmoji(String(v==null?'':v));
+      return useFallback?trClean(raw):raw;
+    };
 
     // Ensure Roboto is selected before any text drawing.
     try{doc.setFont(tableFont);}catch(e){}
@@ -1090,8 +1094,9 @@ window.downloadPDF=async()=>{
     doc.save(`aile-butce-rapor-${year}.pdf`);
     if(typeof window.showToast==='function')window.showToast('PDF indirildi','warn');
   }catch(e){
-    console.error(e);
-    alert('PDF oluşturulamadı.');
+    console.error('downloadPDF hata:', e);
+    if(typeof window.showToast==='function')window.showToast('PDF olusturulamadi, tekrar deneyin','danger');
+    else alert('PDF olusturulamadi, tekrar deneyin.');
   }
 };
 window.importData=()=>{
